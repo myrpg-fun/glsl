@@ -14,7 +14,7 @@
 
     </head><body>
         <div class="bg-fit-all bg-blue-grad">
-            <canvas class="bg-canvas"></canvas>
+            <canvas id="canvas" class="bg-canvas"></canvas>
             <header class="fg-white header">THE Collaborative Way</header>
             <div class="bg-white bg-center bg-shadow bg-welcome">
                 <div class="h1">Hi!</div>
@@ -23,8 +23,79 @@
                 <div class="h4">Get started</div>
             </div>
         </div>
-        <script>
+        <script id="vertex" type="x-shader/x-vertex">
+            attribute vec3 position;
+            attribute vec2 texcoord;
+            varying highp vec2 uv;
 
+            void main() {
+                gl_Position = vec4(position, 1);
+                uv = texcoord;
+            }
+        </script>
+        <!-- fragment shader -->
+        <script id="fragment" type="x-shader/x-fragment">
+            #extension GL_EXT_shader_texture_lod : enable
+            #extension GL_OES_standard_derivatives : enable
+            #ifdef GL_ES
+            precision mediump float;
+            #endif
+
+            uniform float iTime;
+            varying highp vec2 uv;
+            #define rot(x) mat2(cos(x), sin(x), -sin(x), cos(x))
+            #define BEND 0.8
+            #define PI 3.1415
+            
+            float spiral(vec2 uv, float i) { 
+                uv *= rot(-0.04*iTime);
+                //uv += atan(uv.x, uv.y) / acos(0.5);
+                uv += .03 * sin( vec2(10, 30) * uv.yx ) * vec2(sin(iTime*.3 + PI/8.), sin(iTime*.1 + PI/3.));
+            
+//                float d = length(uv);
+//                float angle = atan(uv.y, uv.x) / (2.*3.1415);
+//                d = (abs(angle - fract(d  * 3.0))  - 0.5) * 2.0;
+//                return smoothstep(1.0, -1.0, abs(d - .12) / fwidth(d) - 0.2);
+
+                // make a tube
+                float f = .5 / length(uv);
+
+                // add the angle
+                f += atan(uv.x, uv.y) / acos(0.);
+
+                // let's roll
+                //f += iTime;
+
+                // make it black and white
+                // old version without AA: f = floor(fract(f) * 2.);
+                // new version based on Shane's suggestion:
+                f = clamp((sin((f) * PI * 2.) - .95)*25., 0., 1.);
+
+                // add the darkness to the end of the tunnel
+                f *= sin(length(uv) - .15);
+
+                return clamp(f, 0., 1.);
+            }
+            
+            void main() {
+                float col = 0.;
+                
+                //for(float i=.02; i<=1.; i+=.5) {
+                    float i = .5;
+                    float z = fract(i);
+                    float fade = smoothstep(1., .8, z);
+                    vec2 UV = uv*2.0-1.0;
+                    col += spiral(UV*z, i)*(.5/z)*fade;
+                //}
+                
+                col = sqrt(col);
+            
+                gl_FragColor += 0.1*vec4(vec3(col), 1.);
+                //gl_FragColor = vec4(uv.xy, 0.0, 1.0);
+            }
+        </script>
+        <script>
+            main();
         </script>
     </body>
 </html>
